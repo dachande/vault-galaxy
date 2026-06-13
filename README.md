@@ -2,6 +2,8 @@
 
 **Obsidian Vault Visualizer** – An interactive 3D visualization of your Obsidian vault files rendered as a galaxy of planets and connection lines.
 
+![Vault Galaxy](vault-galaxy.png)
+
 ---
 
 ## Description
