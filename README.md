@@ -36,7 +36,6 @@ Vault Galaxy transforms your Obsidian vault structure into an immersive 3D galax
 
 1. **Click a planet** → The Markdown content is displayed in the right-side viewer
 2. **Click a tag star** → Shows all files with that tag
-3. **Click a connection line** → Shows the linked files
 
 ### Wikilinks in the Markdown Viewer
 
