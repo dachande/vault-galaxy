@@ -11,6 +11,7 @@
   let showLines = true;
   let showLabels = true;
   let threeInitialized = false;
+  let cameraDefaultPos = { x: 0, y: 30, z: 120 };
   let selectedNode = null;
   let highlightedTagId = null;
   let highlightedPlanetId = null;
@@ -744,7 +745,7 @@
     // Camera
     const aspect = (viewport.clientWidth || 800) / (viewport.clientHeight || 600);
     camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 3000);
-    camera.position.set(0, 30, 120);
+    camera.position.set(cameraDefaultPos.x, cameraDefaultPos.y, cameraDefaultPos.z);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -1984,7 +1985,7 @@
   document.getElementById('btn-reset-view').addEventListener('click', function() {
     animateCamera(
       { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-      { x: 0, y: 30, z: 120 },
+      cameraDefaultPos,
       { x: controls.target.x, y: controls.target.y, z: controls.target.z },
       { x: 0, y: 0, z: 0 },
       800
@@ -2006,6 +2007,8 @@
     labelDivs = [];
     tagLabelDivs = [];
     fileTagsMap = new Map();
+    threeInitialized = false;
+    selectedNode = null;
     clearHighlight();
     await openVault();
   });
