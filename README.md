@@ -19,9 +19,9 @@ Vault Galaxy transforms your Obsidian vault structure into an immersive 3D galax
 
 ### Opening a Vault
 
-1. Click the **"Open Vault"** button in the top-left corner
+1. Click the **"Open Vault Directory"** button on the starting screen
 2. Select the folder of your Obsidian vault in the file dialog
-3. The galaxy will be generated and displayed automatically
+3. The galaxy will then be generated and displayed automatically
 
 ### Navigation in the Galaxy
 
@@ -34,8 +34,10 @@ Vault Galaxy transforms your Obsidian vault structure into an immersive 3D galax
 
 ### Exploring Files
 
-1. **Click a planet** → The Markdown content is displayed in the right-side viewer
-2. **Click a tag star** → Shows all files with that tag
+1. **Click a planet** → The planet is focused, centered and Markdown content will be displayed in the right-side viewer
+2. **Click a tag star** → Shows all files with that tag in the right-side viewer
+
+When clicking on a planet or tag all connections to other planets and tags and the connections get highlighted for better visualization and navigation.
 
 ### Wikilinks in the Markdown Viewer
 
