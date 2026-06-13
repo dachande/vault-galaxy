@@ -754,6 +754,9 @@
     const vw = viewport.clientWidth || viewport.offsetWidth || 800;
     const vh = viewport.clientHeight || viewport.offsetHeight || 600;
     renderer.setSize(vw, vh);
+    // Remove old canvas before inserting new one (prevents duplicates on reload)
+    const oldCanvas = viewport.querySelector('canvas');
+    if (oldCanvas) viewport.removeChild(oldCanvas);
     // Insert canvas before minimap so minimap stays on top
     const minimapEl = document.getElementById('minimap');
     viewport.insertBefore(renderer.domElement, minimapEl);
