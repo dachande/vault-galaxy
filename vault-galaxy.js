@@ -2008,7 +2008,9 @@
     planetMeshes = [];
     tagMeshes = [];
     lineSegments = [];
+    labelDivs.forEach(d => d.remove());
     labelDivs = [];
+    tagLabelDivs.forEach(d => d.remove());
     tagLabelDivs = [];
     fileTagsMap = new Map();
     threeInitialized = false;
