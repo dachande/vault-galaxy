@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault Galaxy — Obsidian Vault Visualizer</title>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" as="style">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap">
+    <link rel="stylesheet" href="vault-galaxy.css">
+  </head>
+  <body>
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+      <div class="loader-ring"></div>
+      <div class="loader-text">VAULT GALAXY INITIALIZING...</div>
+      <button class="cyber-btn" id="btn-open-vault" style="margin-top:10px;">
+        ⟐ Open Vault Directory
+      </button>
+      <div style="font-size:11px; color: var(--text-dim); margin-top: 5px;">
+        Select your Obsidian Vault folder
+      </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip"></div>
+
+    <!-- Main app -->
+    <div id="app" style="display:none;">
+      <!-- Top bar -->
+      <div id="topbar">
+        <div class="logo">VAULT GALAXY</div>
+        <div class="controls">
+          <button class="cyber-btn" id="btn-toggle-lines">⟐ Connections</button>
+          <button class="cyber-btn" id="btn-toggle-tags">⟐ Tags</button>
+          <button class="cyber-btn" id="btn-toggle-labels">⟐ Labels</button>
+          <button class="cyber-btn" id="btn-reset-view">⟐ Reset View</button>
+          <button class="cyber-btn" id="btn-reload-vault">⟐ Reload</button>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div id="main">
+        <!-- 3D viewport -->
+        <div id="viewport3d">
+          <div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+        </div>
+
+        <!-- Resize handle -->
+        <div id="resize-handle"></div>
+
+        <!-- Markdown panel -->
+        <div id="md-panel">
+          <div class="panel-header">
+            <span class="file-path" id="md-filename">— No file selected —</span>
+            <button class="toggle-btn" id="btn-close-md">✕</button>
+          </div>
+          <div id="md-content"></div>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div id="statusbar">
+        <span><span class="status-indicator" id="status-dot"></span><span id="status-text">Ready</span></span>
+        <span id="status-files">Files: 0</span>
+        <span id="status-links">Connections: 0</span>
+        <span id="status-fps">FPS: --</span>
+      </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script src="vault-galaxy.js"></script>
+  </body>
+</html>
