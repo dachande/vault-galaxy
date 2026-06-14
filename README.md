@@ -72,7 +72,6 @@ The viewer supports:
 
 ## Technical Details
 
-- **Single-File App**: Everything in one HTML file – no installation, no build process
 - **Libraries**: Three.js (3D rendering), Marked.js (Markdown parsing)
 - **Browser**: Modern browsers with WebGL support (Chrome, Firefox, Edge)
 
