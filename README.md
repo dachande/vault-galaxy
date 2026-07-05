@@ -82,7 +82,6 @@ The viewer supports:
 The following features are on the roadmap for future development:
 
 - **External Links**: External URLs in Markdown will open in a new browser tab/window
-- **Navigation History**: Browser history integration to track the path taken when clicking planets, tags, and following links — enabling back/forward navigation through your vault exploration
 - **Search**: Quick search to find and jump to specific files or tags
 
 ---

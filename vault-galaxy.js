@@ -20,16 +20,21 @@
   let mouseDownPos = { x: 0, y: 0 };
   let isMouseDragging = false;
   let tagMeshes = [];      // Three.js groups for tag nodes
-  let tagLabelDivs = [];   // HTML labels for tags
+  let tagLabelSprites = [];  // Canvas-texture sprites for tag labels
+  let planetLabelSprites = []; // Canvas-texture sprites for planet labels
   let fileTagsMap = new Map(); // filePath -> Set of tag names
   let nodeMap = new Map(); // id -> node (for O(1) lookups)
   let fileInput = null; // reusable file input element
+
+  // ── Navigation history ──
+  let navHistory = [];      // {view, nodeId, cameraPos, controlsTarget, mdScrollTop, mdFilename}
+  let navHistoryIdx = -1;
+  let isNavigatingHistory = false;
 
   // ── Three.js globals ──
   let scene, camera, renderer, controls;
   let planetMeshes = [];
   let lineSegments = [];
-  let labelDivs = [];
   let raycaster, mouse;
   let minimapCtx;
   let frameCount = 0;
@@ -888,13 +893,22 @@
       if (line.material) line.material.dispose();
       scene.remove(line);
     }
-    for (const d of labelDivs) d.remove();
-    for (const d of tagLabelDivs) d.remove();
+    for (const s of tagLabelSprites) scene.remove(s);
+    for (const s of planetLabelSprites) scene.remove(s);
+    // Dispose sprite materials/textures
+    for (const s of tagLabelSprites) {
+      if (s.material && s.material.map) s.material.map.dispose();
+      if (s.material) s.material.dispose();
+    }
+    for (const s of planetLabelSprites) {
+      if (s.material && s.material.map) s.material.map.dispose();
+      if (s.material) s.material.dispose();
+    }
     planetMeshes = [];
     tagMeshes = [];
     lineSegments = [];
-    labelDivs = [];
-    tagLabelDivs = [];
+    tagLabelSprites = [];
+    planetLabelSprites = [];
 
     // ═══════════════════════════════════════
     //  Create tag nodes (crystal prisms)
@@ -967,18 +981,13 @@
       scene.add(group);
       tagMeshes.push(group);
 
-      // HTML label for tag
-      const label = document.createElement('div');
-      label.className = 'planet-label';
-      label.textContent = '#' + tagNode.name;
-      label.style.color = '#' + color.getHexString();
-      label.style.fontSize = '11px';
-      label.style.fontWeight = 'bold';
-      label.style.letterSpacing = '1px';
-      label.style.textShadow = '0 0 8px ' + '#' + color.getHexString() + ', 0 0 16px ' + '#' + color.getHexString() + '88';
-      label.style.paddingBottom = '8px';
-      viewport.appendChild(label);
-      tagLabelDivs.push(label);
+      // 3D label sprite (canvas texture)
+      const tagLabelSprite = createLabelSprite('#' + tagNode.name, '#' + color.getHexString(), 1.2);
+      tagLabelSprite.position.set(tagNode.x, tagNode.y + 2.5, tagNode.z);
+      tagLabelSprite.userData.targetPixelHeight = 28;
+      tagLabelSprite.visible = showLabels && showTags;
+      scene.add(tagLabelSprite);
+      tagLabelSprites.push(tagLabelSprite);
     }
 
     // ═══════════════════════════════════════
@@ -1033,13 +1042,14 @@
       scene.add(group);
       planetMeshes.push(group);
 
-      // HTML label
-      const label = document.createElement('div');
-      label.className = 'planet-label';
-      label.textContent = node.name.length > 30 ? node.name.substring(0, 28) + '…' : node.name;
-      label.style.color = '#' + color.getHexString();
-      viewport.appendChild(label);
-      labelDivs.push(label);
+      // 3D label sprite (canvas texture)
+      const displayName = node.name.length > 30 ? node.name.substring(0, 28) + '…' : node.name;
+      const planetLabelSprite = createLabelSprite(displayName, '#' + color.getHexString(), 1.0);
+      planetLabelSprite.position.set(node.x, node.y + node.radius + 1.5, node.z);
+      planetLabelSprite.userData.targetPixelHeight = 24;
+      planetLabelSprite.visible = showLabels;
+      scene.add(planetLabelSprite);
+      planetLabelSprites.push(planetLabelSprite);
     }
 
     // Create connection lines
@@ -1436,8 +1446,12 @@
       return;
     }
 
+    // Push new state to history
+    pushNavEntry(nodeId, 'planet');
+
     selectedNode = nodeId;
     highlightedPlanetId = nodeId;
+    highlightedTagId = null;
     highlightedTagId = null;
     highlightedLines = [];
     highlightedIds = new Set();
@@ -1619,6 +1633,9 @@
       clearHighlight();
       return;
     }
+
+    // Push new state to history
+    pushNavEntry(tagId, 'tag');
 
     const tagNode = tagNodes.find(t => t.id === tagId);
     if (!tagNode) return;
@@ -1839,6 +1856,12 @@
     app.style.display = 'flex';
     statusDot.classList.remove('offline');
     statusText.textContent = 'Vault loaded';
+
+    // Initialize history with an overview state
+    navHistory = [{ nodeId: null, type: 'overview' }];
+    navHistoryIdx = 0;
+    window.history.replaceState({ navIdx: 0 }, '', '');
+
     // Wait for layout to compute sizes (app was display:none)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1864,8 +1887,18 @@
           }
           planetMeshes = [];
           lineSegments = [];
-          labelDivs.forEach(d => d.remove());
-          labelDivs = [];
+          for (const s of planetLabelSprites) {
+            if (s.material && s.material.map) s.material.map.dispose();
+            if (s.material) s.material.dispose();
+            scene.remove(s);
+          }
+          planetLabelSprites = [];
+          for (const s of tagLabelSprites) {
+            if (s.material && s.material.map) s.material.map.dispose();
+            if (s.material) s.material.dispose();
+            scene.remove(s);
+          }
+          tagLabelSprites = [];
         }
         buildScene();
       });
@@ -1906,6 +1939,33 @@
     }
   })();
 
+  // ═══════════════════════════════════════
+  //  Navigation History
+  // ═══════════════════════════════════════
+
+  function pushNavEntry(nodeId, type) {
+    if (isNavigatingHistory) return;
+    // Truncate forward history
+    navHistory = navHistory.slice(0, navHistoryIdx + 1);
+    navHistory.push({ nodeId, type });
+    navHistoryIdx++;
+    window.history.pushState({ navIdx: navHistoryIdx }, '', '');
+  }
+
+  function navigateToEntry(idx) {
+    const entry = navHistory[idx];
+    if (!entry) return;
+    if (entry.type === 'overview') {
+      clearHighlight();
+      return;
+    }
+    if (entry.type === 'planet') {
+      selectPlanet(entry.nodeId);
+    } else {
+      selectTag(entry.nodeId);
+    }
+  }
+
   // Button handlers
   document.getElementById('btn-open-vault').addEventListener('click', openVault);
 
@@ -1935,11 +1995,11 @@
   btnToggleLabels.addEventListener('click', function() {
     showLabels = !showLabels;
     this.classList.toggle('active', showLabels);
-    for (const label of labelDivs) {
-      label.style.display = showLabels ? 'block' : 'none';
+    for (const sprite of planetLabelSprites) {
+      sprite.visible = showLabels;
     }
-    for (const label of tagLabelDivs) {
-      label.style.display = showLabels ? 'block' : 'none';
+    for (const sprite of tagLabelSprites) {
+      sprite.visible = showLabels && showTags;
     }
   });
 
@@ -1953,8 +2013,8 @@
     for (const group of tagMeshes) {
       group.visible = showTags;
     }
-    for (const label of tagLabelDivs) {
-      label.style.display = showTags && showLabels ? 'block' : 'none';
+    for (const sprite of tagLabelSprites) {
+      sprite.visible = showTags && showLabels;
     }
   });
 
@@ -2008,14 +2068,25 @@
     planetMeshes = [];
     tagMeshes = [];
     lineSegments = [];
-    labelDivs.forEach(d => d.remove());
-    labelDivs = [];
-    tagLabelDivs.forEach(d => d.remove());
-    tagLabelDivs = [];
+    for (const s of planetLabelSprites) {
+      if (s.material && s.material.map) s.material.map.dispose();
+      if (s.material) s.material.dispose();
+      scene.remove(s);
+    }
+    planetLabelSprites = [];
+    for (const s of tagLabelSprites) {
+      if (s.material && s.material.map) s.material.map.dispose();
+      if (s.material) s.material.dispose();
+      scene.remove(s);
+    }
+    tagLabelSprites = [];
     fileTagsMap = new Map();
     threeInitialized = false;
     selectedNode = null;
     clearHighlight();
+    // Reset navigation history
+    navHistory = [];
+    navHistoryIdx = -1;
     await openVault();
   });
 
@@ -2197,45 +2268,48 @@
       }
     }
 
-    // Update labels positions (throttled to every 3rd frame for performance)
-    if (showLabels && frameCount % 3 === 0) {
+    // Update label positions every frame — constant screen size
+    if (showLabels) {
+      const fovRad = camera.fov * Math.PI / 180;
       for (let i = 0; i < planetMeshes.length; i++) {
         const group = planetMeshes[i];
-        const label = labelDivs[i];
-        if (!label) continue;
+        const sprite = planetLabelSprites[i];
+        if (!sprite) continue;
 
         const pos = new THREE.Vector3();
         group.getWorldPosition(pos);
-        pos.y += group.userData.node.radius + 1.0;
+        pos.y += group.userData.node.radius + 3.0;
 
         const projected = pos.clone().project(camera);
-        const x = (projected.x * 0.5 + 0.5) * viewport.clientWidth;
-        const y = (-projected.y * 0.5 + 0.5) * viewport.clientHeight;
-
-        label.style.display = projected.z > 1 ? 'none' : 'block';
-        if (label.style.display === 'block') {
-          label.style.left = x + 'px';
-          label.style.top = y + 'px';
+        sprite.visible = projected.z <= 1;
+        if (sprite.visible) {
+          sprite.position.copy(pos);
+          const dist = camera.position.distanceTo(pos);
+          const viewHeight = 2 * Math.tan(fovRad / 2) * dist;
+          const s = sprite.userData.targetPixelHeight * viewHeight / renderer.domElement.clientHeight;
+          const ar = sprite.userData.aspectRatio || 1;
+          sprite.scale.set(s * ar, s, 1);
         }
       }
 
       for (let i = 0; i < tagMeshes.length; i++) {
         const group = tagMeshes[i];
-        const label = tagLabelDivs[i];
-        if (!label) continue;
+        const sprite = tagLabelSprites[i];
+        if (!sprite) continue;
 
         const pos = new THREE.Vector3();
         group.getWorldPosition(pos);
-        pos.y += 2.5;
+        pos.y += 4.0;
 
         const projected = pos.clone().project(camera);
-        const x = (projected.x * 0.5 + 0.5) * viewport.clientWidth;
-        const y = (-projected.y * 0.5 + 0.5) * viewport.clientHeight;
-
-        label.style.display = projected.z > 1 ? 'none' : 'block';
-        if (label.style.display === 'block') {
-          label.style.left = x + 'px';
-          label.style.top = y + 'px';
+        sprite.visible = projected.z <= 1;
+        if (sprite.visible) {
+          sprite.position.copy(pos);
+          const dist = camera.position.distanceTo(pos);
+          const viewHeight = 2 * Math.tan(fovRad / 2) * dist;
+          const s = sprite.userData.targetPixelHeight * viewHeight / renderer.domElement.clientHeight;
+          const ar = sprite.userData.aspectRatio || 1;
+          sprite.scale.set(s * ar, s, 1);
         }
       }
     }
@@ -2258,6 +2332,48 @@
   }
 
   // ═══════════════════════════════════════
+  //  Label Sprite Helper
+  // ═══════════════════════════════════════
+
+  function createLabelSprite(text, colorHex, fontSize) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const fontSizeNum = fontSize * 30;
+    ctx.font = 'bold ' + fontSizeNum + 'px monospace';
+    const metrics = ctx.measureText(text);
+    const padding = 24;
+    canvas.width = Math.ceil(metrics.width) + padding * 2;
+    canvas.height = Math.ceil(fontSizeNum * 1.6);
+
+    ctx.font = 'bold ' + fontSizeNum + 'px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.shadowColor = colorHex;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = colorHex;
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    ctx.shadowBlur = 0;
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+
+    const mat = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false
+    });
+    const sprite = new THREE.Sprite(mat);
+    // Proportional to canvas size (correct aspect ratio)
+    sprite.scale.set(canvas.width / 40, canvas.height / 40, 1);
+    sprite.userData.aspectRatio = canvas.width / canvas.height;
+    return sprite;
+  }
+
+  // ═══════════════════════════════════════
   //  Init
   // ═══════════════════════════════════════
 
@@ -2276,5 +2392,23 @@
       document.getElementById('loading-overlay').appendChild(fallback);
     }
   })();
+
+  // ═══════════════════════════════════════
+  //  Browser Back/Forward
+  // ═══════════════════════════════════════
+
+  window.addEventListener('popstate', function(e) {
+    if (isNavigatingHistory) return;
+    if (!e.state) return;
+
+    // e.state.navIdx ist der Ziel-Index aus pushState
+    const targetIdx = e.state.navIdx;
+    if (targetIdx !== navHistoryIdx && targetIdx >= 0 && targetIdx < navHistory.length) {
+      navHistoryIdx = targetIdx;
+      isNavigatingHistory = true;
+      navigateToEntry(targetIdx);
+      isNavigatingHistory = false;
+    }
+  });
 
 })();
